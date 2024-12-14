@@ -22,7 +22,7 @@ chatController.post("/create-chat", async (req, res) => {
 
 chatController.post("/get-booking-chat", async (req, res) => {
   try { 
-    const chat = await Chat.find({bookingId: req.body.bookingId});
+    const chat = await Chat.find({bookingId: req.body.bookingId}).sort({ createdAt: 1 });
     sendResponse(res, 200, "Success", {
       success: true,
       message: "Message retrieved successfully",
