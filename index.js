@@ -3,10 +3,20 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const routes = require("./src/route");
-const http = require('http');
-
+const {createServer} = require('http');
+const {Server} = require("socket.io")
 
 const app = express();
+const server = createServer(app);
+
+const io = new Server(server, {
+  cors:{
+    origin:"*",
+    methods:["GET", "POST"],
+    credentials:true,
+  }
+})
+
 app.use('/uploads', express.static('uploads'))
 const PORT = process.env.PORT || 8000;
 
@@ -25,15 +35,22 @@ mongoose.connect(process.env.DB_STRING
     console.warn("db connection done again")
 })
 
-
+// Pass the `io` instance to routes
+app.use((req, res, next) => {
+  req.io = io; // Attach the `io` object to the request
+  next();
+});
 
 app.get("/", (req, res) => res.send(`Server listing on port ${PORT}`));
 app.use("/api", routes);
-app.all("*", (req, res) => res.status(404).json({ error: "404 Not Found" }));  
+app.all("*", (req, res) => res.status(404).json({ error: "404 Not Found" })); 
 
+io.on("connection", (socket)=>{
+  console.log("User connected");
+  console.log("Id", socket.id)
+  socket.emit("Welcome", "Welcome to the server")
+})
 
-
-
-const server = app.listen(PORT, () =>
+server.listen(PORT, () =>
   console.log(`Server running on ${process.env.BACKEND_URL}`)
 );
