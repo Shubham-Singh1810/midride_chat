@@ -24,7 +24,16 @@ emailController.get("/list", async (req, res) => {
           return acc;
         }, {});
 
-      const senderEmail = headers.from ? headers.from.match(/<(.+)>/)?.[1] : null;
+      const senderInfo = headers.from
+        ? headers.from.match(/^(.*?)(?:\s+)?(?:<(.+)>)?$/) || []
+        : [];
+      const senderName = senderInfo[1]?.trim() || "Unknown Sender";
+      const senderEmail = senderInfo[2]?.trim() || "Unknown Email";
+
+      // Split name into first name and last name
+      const nameParts = senderName.split(" ");
+      const firstName = nameParts[0] || "Unknown";
+      const lastName = nameParts.slice(1).join(" ") || "Unknown";
 
       // Extract plain text and HTML content
       let plainText = null;
@@ -47,7 +56,11 @@ emailController.get("/list", async (req, res) => {
 
       return {
         date: headers.date || email.attributes.date,
-        from: headers.from || "Unknown Sender",
+        from: {
+          firstName,
+          lastName,
+          email: senderEmail,
+        },
         to: headers.to || "Unknown Recipient",
         subject: headers.subject || "No Subject",
         flags: email.attributes.flags || [],
@@ -73,6 +86,7 @@ emailController.get("/list", async (req, res) => {
     });
   }
 });
+
 
 
 
