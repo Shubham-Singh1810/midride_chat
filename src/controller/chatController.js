@@ -1,13 +1,46 @@
 const express = require("express");
 const { sendResponse } = require("../utils/common");
-require("dotenv").config({ path: `.env.${process.env.NODE_ENV}` });
+require("dotenv").config();
 const Chat = require("../model/chat.Schema");
 const chatController = express.Router();
+const OneSignal = require("onesignal-node");
+
+const client = new OneSignal.Client(process.env.ONESIGNAL_APP_ID, process.env.ONESIGNAL_REST_API_KEY);
+const axios = require("axios"); // Import axios for making HTTP requests
+
+const sendPushNotification = async (bookingId, deviceId, message) => {
+  console.log(process.env.ONESIGNAL_USER_APP_ID, process.env.ONESIGNAL_USER_REST_API_KEY)
+ 
+  try {
+    const payload = {
+      app_id: process.env.ONESIGNAL_USER_APP_ID, 
+      include_player_ids: [deviceId], 
+      contents: { en: message }, 
+    };
+
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Basic ${process.env.ONESIGNAL_USER_REST_API_KEY}`,
+    };
+
+    const response = await axios.post(
+      "https://onesignal.com/api/v1/notifications",
+      payload,
+      { headers }
+    );
+
+    console.log("Notification sent successfully:", response.data);
+  } catch (error) {
+    console.error(
+      "Error sending push notification:",
+      error.response ? error.response.data : error.message
+    );
+  }
+};
 
 chatController.post("/create-chat", async (req, res) => {
   try {
     const chat = await Chat.create(req.body);
-    // Emit the new chat message to all connected clients
     req.io.emit("new-message", chat); // Broadcast the message
     sendResponse(res, 200, "Success", {
       success: true,

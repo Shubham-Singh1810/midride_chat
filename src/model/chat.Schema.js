@@ -10,7 +10,8 @@ const chatSchema = mongoose.Schema({
   profile_pic:{type:String},
   name:{type:String},
   bookingId:{type:Number},
-  isActive:{type: Boolean ,  default: false}
+  isActive:{type: Boolean ,  default: false},
+  deviceId:{type:String}
 });
 
 chatSchema.plugin(timestamps);
