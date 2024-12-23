@@ -1,4 +1,5 @@
 const Imap = require("imap");
+const { simpleParser } = require("mailparser");
 
 const imapConfig = {
   user: "pay@mieride.ca",
@@ -16,34 +17,61 @@ const fetchEmails = () => {
       imap.openBox("INBOX", true, function (err, box) {
         if (err) return reject(err);
 
-        // Search for emails since a specific date
-        imap.search(["ALL", ["SINCE", "01-Dec-2024"]], function (err, results) {
+
+        // Fetch the latest 50 emails (modify the search query if necessary)
+        const fetchLimit = 50;
+
+        imap.search(["ALL"], function (err, results) {
           if (err) return reject(err);
 
-          const limitedResults = results.slice(0, 50); // Fetch first 50 emails
-          const fetch = imap.fetch(limitedResults, {
-            bodies: ["HEADER.FIELDS (FROM TO SUBJECT DATE)"],
-            struct: true,
-          });
+          // Limit to the latest 50 emails
+          const limitedResults = results.slice(-fetchLimit);
+
+
+          const fetch = imap.fetch(limitedResults, { bodies: "" });
 
           const emails = [];
 
           fetch.on("message", function (msg, seqno) {
-            const email = {};
+            let emailContent = "";
+
             msg.on("body", function (stream) {
-              let buffer = "";
               stream.on("data", function (chunk) {
-                buffer += chunk.toString("utf8");
-              });
-              stream.once("end", function () {
-                email.raw = buffer;
+                emailContent += chunk.toString("utf8");
               });
             });
-            msg.once("attributes", function (attrs) {
-              email.attributes = attrs;
-            });
-            msg.once("end", function () {
-              emails.push(email);
+
+            msg.once("end", async function () {
+              try {
+                const parsed = await simpleParser(emailContent); // Parse email using mailparser
+
+                // Extract sender information
+                const senderName = parsed.from?.text || "Unknown Sender";
+                const senderEmail = parsed.from?.value[0]?.address || "Unknown Email";
+                const nameParts = senderName.split("<");
+                const fullName = nameParts[0] ? nameParts[0].slice(1, -2) : "Unknown";
+
+                // Create the email object
+                const formObject = {
+                  fullName,
+                  email: senderEmail,
+                  date: parsed.date,
+                  subject: parsed.subject.split(":")[0] || "No Subject",
+                  subjectText: parsed.subject.split(":")[1] || "No Subject",
+                  text: parsed.text || "No plain text content available",
+                  html: parsed.html || "No HTML content available",
+                  attachments: parsed.attachments.map((attachment) => ({
+                    filename: attachment.filename,
+                    contentType: attachment.contentType,
+                    size: attachment.size,
+                    content: attachment.content.toString("base64"), // Base64 encode for sending
+                  })),
+                };
+
+                emails.push(formObject);
+              } catch (parseErr) {
+                console.error("Email parse error:", parseErr);
+              }
             });
           });
 
@@ -54,7 +82,14 @@ const fetchEmails = () => {
 
           fetch.once("end", function () {
             imap.end();
-            resolve(emails);
+
+            // Sort emails in descending order (latest first)
+            emails.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            // Log the number of emails returned
+            console.log("Emails fetched:", emails.length);
+
+            resolve(emails); // Return the latest 50 emails
           });
         });
       });
