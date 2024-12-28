@@ -41,22 +41,22 @@ const sendPushNotification = async (bookingId, deviceId, message) => {
 
 chatController.post("/create-chat", async (req, res) => {
   try {
-    if (req.file) {
-      let image = await cloudinary.uploader.upload(req.file.path, function (err, result) {
-        if (err) {
-          return err;
-        } else {
-          return result;
-        }
-      });
-      if(req?.body?.image){
-       chatData = { ...req.body, image: image.url };
-      }
-      if(req?.body?.voice){
-        chatData = { ...req.body, voice: image.url };
-      }
-    }
-    const chat = await Chat.create(chatData);
+    // if (req.file) {
+    //   let image = await cloudinary.uploader.upload(req.file.path, function (err, result) {
+    //     if (err) {
+    //       return err;
+    //     } else {
+    //       return result;
+    //     }
+    //   });
+    //   if(req?.body?.image){
+    //    chatData = { ...req.body, image: image.url };
+    //   }
+    //   if(req?.body?.voice){
+    //     chatData = { ...req.body, voice: image.url };
+    //   }
+    // }
+    const chat = await Chat.create(req.body);
     req.io.emit("new-message", chat); // Broadcast the message
     sendResponse(res, 200, "Success", {
       success: true,
