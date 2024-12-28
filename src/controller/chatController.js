@@ -8,6 +8,7 @@ const cloudinary = require("../utils/cloudinary");
 const client = new OneSignal.Client(process.env.ONESIGNAL_APP_ID, process.env.ONESIGNAL_REST_API_KEY);
 const axios = require("axios"); // Import axios for making HTTP requests
 const { isReadable } = require("stream");
+const upload = require("../utils/multer");
 
 const sendPushNotification = async (bookingId, deviceId, message) => {
   console.log(process.env.ONESIGNAL_USER_APP_ID, process.env.ONESIGNAL_USER_REST_API_KEY)
@@ -39,23 +40,19 @@ const sendPushNotification = async (bookingId, deviceId, message) => {
   }
 };
 
-chatController.post("/create-chat", async (req, res) => {
+chatController.post("/create-chat", upload.single("image"), async (req, res) => {
   try {
-    let chatData;
+    let chatData = {...req.body};
     if (req.file) {
       let image = await cloudinary.uploader.upload(req.file.path, function (err, result) {
         if (err) {
           return err;
         } else {
+          chatData.image = result.url;
           return result;
         }
       });
-      if(req?.body?.image){
-       chatData = { ...req.body, image: image.url };
-      }
-      if(req?.body?.voice){
-        chatData = { ...req.body, voice: image.url };
-      }
+      
     }
     const chat = await Chat.create(chatData);
     req.io.emit("new-message", chat); // Broadcast the message
