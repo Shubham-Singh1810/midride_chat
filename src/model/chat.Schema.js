@@ -11,7 +11,9 @@ const chatSchema = mongoose.Schema({
   name:{type:String},
   bookingId:{type:Number},
   isActive:{type: Boolean ,  default: false},
-  deviceId:{type:String}
+  deviceId:{type:String},
+  image:{type:String},
+  voice:{type:String}
 });
 
 chatSchema.plugin(timestamps);

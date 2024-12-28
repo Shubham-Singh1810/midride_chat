@@ -4,9 +4,10 @@ require("dotenv").config();
 const Chat = require("../model/chat.Schema");
 const chatController = express.Router();
 const OneSignal = require("onesignal-node");
-
+const cloudinary = require("../utils/cloudinary");
 const client = new OneSignal.Client(process.env.ONESIGNAL_APP_ID, process.env.ONESIGNAL_REST_API_KEY);
 const axios = require("axios"); // Import axios for making HTTP requests
+const { isReadable } = require("stream");
 
 const sendPushNotification = async (bookingId, deviceId, message) => {
   console.log(process.env.ONESIGNAL_USER_APP_ID, process.env.ONESIGNAL_USER_REST_API_KEY)
@@ -40,7 +41,22 @@ const sendPushNotification = async (bookingId, deviceId, message) => {
 
 chatController.post("/create-chat", async (req, res) => {
   try {
-    const chat = await Chat.create(req.body);
+    if (req.file) {
+      let image = await cloudinary.uploader.upload(req.file.path, function (err, result) {
+        if (err) {
+          return err;
+        } else {
+          return result;
+        }
+      });
+      if(req?.body?.image){
+       chatData = { ...req.body, image: image.url };
+      }
+      if(req?.body?.voice){
+        chatData = { ...req.body, voice: image.url };
+      }
+    }
+    const chat = await Chat.create(chatData);
     req.io.emit("new-message", chat); // Broadcast the message
     sendResponse(res, 200, "Success", {
       success: true,
@@ -63,6 +79,22 @@ chatController.post("/get-booking-chat", async (req, res) => {
     sendResponse(res, 200, "Success", {
       success: true,
       message: "Message retrieved successfully",
+      data: chat,
+    });
+  } catch (error) {
+    console.log(error);
+    sendResponse(res, 500, "Failed", {
+      message: error.message || "Internal server error",
+    });
+  }
+});
+
+chatController.post("/update-chat", async (req, res) => {
+  try {
+   const chat = await Chat.updateOne({ _id: req.body._id }, {isRead:true}, { new: true });
+    sendResponse(res, 200, "Success", {
+      success: true,
+      message: "Marked read successfully",
       data: chat,
     });
   } catch (error) {
