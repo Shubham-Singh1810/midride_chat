@@ -103,4 +103,41 @@ chatController.post("/update-chat", async (req, res) => {
   }
 });
 
+chatController.post("/get-unread-message-count", async (req, res) => {
+  try {
+    const { bookingIds } = req.body;
+
+    if (!Array.isArray(bookingIds) || bookingIds.length === 0) {
+      return sendResponse(res, 400, "Failed", {
+        success: false,
+        message: "Invalid or empty bookingIds",
+      });
+    }
+
+    // Fetch unread message counts for each bookingId
+    const messageCounts = await Promise.all(
+      bookingIds.map(async (bookingId) => {
+        const unReadMessageCount = await Chat.countDocuments({
+          bookingId,
+          isRead: false,
+        });
+        return { bookingId, unReadMessageCount };
+      })
+    );
+
+    sendResponse(res, 200, "Success", {
+      success: true,
+      message: "Message retrieved successfully",
+      data: messageCounts,
+    });
+  } catch (error) {
+    console.error(error);
+    sendResponse(res, 500, "Failed", {
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+});
+
+
 module.exports = chatController;
