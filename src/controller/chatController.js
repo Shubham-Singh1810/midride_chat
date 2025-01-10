@@ -120,6 +120,7 @@ chatController.post("/get-unread-message-count", async (req, res) => {
         const unReadMessageCount = await Chat.countDocuments({
           bookingId,
           isRead: false,
+          userType:"driver"
         });
         return { bookingId, unReadMessageCount };
       })
